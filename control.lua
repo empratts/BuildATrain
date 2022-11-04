@@ -1,5 +1,8 @@
 itemTotals = {} --holds the text fields for the item totals
 itemBuffers = {} --holds the text fields for the item buffer amounts
+fuelTypes = {"Wood", "Coal", "Solid fuel", "Rocket fuel", "Nuclear fuel"}
+fuelType = "Nuclear fuel"
+fuelCount = 3
 
 function dump(o)
     if type(o) == 'table' then
