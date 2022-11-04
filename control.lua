@@ -52,13 +52,27 @@ function splitItemsIntoCars(items)
     local cars = {}
     for _, v in pairs(items) do
         if v[2] > 40 then
-            return nil
+            local stacksRemaining = v[2]
+            while stacksRemaining > 0 do
+                
+                local car = findCarForItem(cars, {v[1], math.min(40, stacksRemaining), v[3], v[4]})
+                if cars[car] == nil then
+                    cars[car] = {}
+                end
+                table.insert(cars[car], 1, {v[1], math.min(40, stacksRemaining), v[3], v[4]})
+
+                if stacksRemaining < 40 then
+                    table.insert(cars[car], 1, {"FILLER", 40 - stacksRemaining, 0, 0})
+                end
+                stacksRemaining = stacksRemaining - 40
+            end
+        else
+            local car = findCarForItem(cars, v)
+            if cars[car] == nil then
+                cars[car] = {}
+            end
+            table.insert(cars[car], 1, v)
         end
-        local car = findCarForItem(cars, v)
-        if cars[car] == nil then
-            cars[car] = {}
-        end
-        table.insert(cars[car], 1, v)
     end
 
     return cars
@@ -70,8 +84,10 @@ function getRequestFiltersFromCars(cars)
     for i, car in pairs(cars) do
         local requests = {}
         for j, item in pairs(car) do
-            local request = {["index"]=j,["name"]=item[1],["count"]=item[4]}
-            table.insert(requests,j,request)
+            if item[1] ~= "FILLER" then
+                local request = {["index"]=j,["name"]=item[1],["count"]=item[4]}
+                table.insert(requests,j,request)
+            end
         end
         table.insert(chests, i, requests)
     end
@@ -84,8 +100,10 @@ function getCombinatorSettingsFromCars(cars)
     for i, car in pairs(cars) do
         local signals = {}
         for j, item in pairs(car) do
-            local signal = {["signal"]={["type"]="item",["name"]=item[1],},["count"]=item[3],["index"]=j}
-            table.insert(signals,j,signal)
+            if item[1] ~= "FILLER" then
+                local signal = {["signal"]={["type"]="item",["name"]=item[1],},["count"]=item[3],["index"]=j}
+                table.insert(signals,j,signal)
+            end
         end
         table.insert(combinators, i, signals)
     end
