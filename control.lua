@@ -1,8 +1,9 @@
 itemTotals = {} --holds the text fields for the item totals
 itemBuffers = {} --holds the text fields for the item buffer amounts
 fuelTypes = {"Wood", "Coal", "Solid fuel", "Rocket fuel", "Nuclear fuel"}
-fuelType = "Nuclear fuel"
-fuelCount = 3
+fuelPrototypeNames = {"wood", "coal", "solid-fuel", "rocket-fuel", "nuclear-fuel"}
+fuelSelector = {} --holds the drop-down for the fuel type selector
+fuelBuffer = {} --holds the text field for the fuel quantity buffer
 
 function dump(o)
     if type(o) == 'table' then
@@ -166,10 +167,10 @@ function getCursorBPItemCount(player)
     return bpItems, itemCount
 end
 
-function generateBP(carCount, itemRequests, combinatorSettings)
+function generateBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount)
     local blueprint = {
         [1]={["entity_number"]=1,["name"]="locomotive",["position"]={["x"]=6,["y"]=1,},["orientation"]=0.75,["schedule"]={[1]={["station"]="BAT_MassBuild_Loading",["wait_conditions"]={[1]={["compare_type"]="or",["type"]="item_count",["condition"]={["first_signal"]={["type"]="item",["name"]="fast-inserter",},["constant"]=25,["comparator"]="≥",},},[2]={["compare_type"]="and",["type"]="item_count",["condition"]={["first_signal"]={["type"]="item",["name"]="big-electric-pole",},["constant"]=19,["comparator"]="≥",},},[3]={["compare_type"]="and",["type"]="inactivity",["ticks"]=300,},},},},},
-        [2]={["entity_number"]=2,["name"]="logistic-chest-requester",["position"]={["x"]=8.5,["y"]=-1.5,},},
+        [2]={["entity_number"]=2,["name"]="logistic-chest-requester",["position"]={["x"]=8.5,["y"]=-1.5,},["request_filters"]={{["index"]=1,["name"]=fuelType,["count"]=fuelCount},},},
         [3]={["entity_number"]=3,["name"]="train-stop",["position"]={["x"]=3,["y"]=-1,},["direction"]=6,["control_behavior"]={["send_to_train"]="false",["read_from_train"]="true",["read_stopped_train"]="true",["train_stopped_signal"]={["type"]="virtual",["name"]="signal-T",},}, ["connections"]={["1"]={["red"]={[1]={["entity_id"]=14,},},["green"]={[1]={["entity_id"]=4,["circuit_id"]=1,},},},}, ["station"]="BAT_MassBuild_Loading",["manual_trains_limit"]=1,},
         [4]={["entity_number"]=4,["name"]="decider-combinator",["position"]={["x"]=5,["y"]=-0.5,},["direction"]=2,["control_behavior"]={["decider_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-T",},["constant"]=0,["comparator"]="≠",["output_signal"]={["type"]="virtual",["name"]="signal-T",},["copy_count_from_input"]="true",},},["connections"]={["1"]={["green"]={[1]={["entity_id"]=3,},},},["2"]={["green"]={[1]={["entity_id"]=5,["circuit_id"]=1,},},},},},
         [5]={["entity_number"]=5,["name"]="decider-combinator",["position"]={["x"]=7,["y"]=-0.5,},["direction"]=2,["control_behavior"]={["decider_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-T",},["constant"]=0,["comparator"]="≠",["output_signal"]={["type"]="virtual",["name"]="signal-T",},["copy_count_from_input"]="true",},},["connections"]={["1"]={["green"]={[1]={["entity_id"]=4,["circuit_id"]=2,},},},["2"]={["green"]={[1]={["entity_id"]=14,},},},},},
@@ -253,6 +254,16 @@ function generateSubScreenFromBPItems(player, bpItems)
             itemBuffers[k] = sub_content_flow.add{type="textfield", name="bat_controls_buffer_"..k, text=tostring(buffered_amount), numeric=true, allow_decimal=false, allow_negative=false, style="bat_content_textfield"}
         end
 
+        sub_content_frame.add{type="line"}
+
+        local sub_fuel_flow = sub_content_frame.add{type="flow", name="fuel", direction="horizontal", style="bat_content_flow"}
+        sub_fuel_flow.add{type="label", caption="Power trains with:"}
+        fuelSelector = sub_fuel_flow.add{type="drop-down", name="bat_fuel_list", items=fuelTypes, selected_index=5}
+        sub_fuel_flow.add{type="label", caption="Fuel buffer:"}
+        fuelBuffer = sub_fuel_flow.add{type="textfield", name="bat_fuel_buffer", text="3", numeric=true, allow_decimal=false, allow_negative=false, style="bat_content_textfield"}
+
+        sub_content_frame.add{type="line"}
+
         local sub_close_flow = sub_content_frame.add{type="flow", name="close", direction="horizontal", style="bat_content_flow"}
         sub_close_flow.add{type="button", name="bat_close_sub_frame", caption={"bat.close"}}
         local sub_go_flow = sub_close_flow.add{type="flow", name="close", direction="horizontal", style="bat_go_flow"}
@@ -281,6 +292,8 @@ script.on_event(defines.events.on_player_created, function(event)
     local main_content_flow = main_content_frame.add{type="flow", name="main_content_flow", direction="horizontal", style="bat_content_flow"}
 
     main_content_flow.add{type="button", name="bat_main_activate", caption={"bat.activate"}}
+    main_content_flow.add{type="button", name="bat_main_reload", caption="Reload"}
+
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)
@@ -298,6 +311,12 @@ script.on_event(defines.events.on_gui_click, function(event)
         else
             player.print("Item is not a Bluerprint, or Blueprint is empty.")
         end
+
+    elseif event.element.name == "bat_main_reload" then
+        local player = game.get_player(event.player_index)
+        player.print("Reloading")
+        
+        game.reload_mods()
     
     --event handler for the close button on the sub-frame
     elseif event.element.name == "bat_close_sub_frame" then
@@ -339,10 +358,13 @@ script.on_event(defines.events.on_gui_click, function(event)
             local itemRequests = getRequestFiltersFromCars(cars)
             local combinatorSettings = getCombinatorSettingsFromCars(cars)
 
+            local fuelType = fuelPrototypeNames[fuelSelector.selected_index]
+            local fuelCount = tonumber(fuelBuffer.text)
+
             local stack = global.batTempBPInventory[1]
             stack.set_stack("blueprint")
 
-            stack.set_blueprint_entities(generateBP(carCount, itemRequests, combinatorSettings))
+            stack.set_blueprint_entities(generateBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount))
 
 
             player.cursor_stack.set_stack(stack)
@@ -356,4 +378,15 @@ script.on_event(defines.events.on_gui_click, function(event)
         end
         
     end
+end)
+
+script.on_event(defines.events.on_gui_selection_state_changed, function(event)
+    if event.element.name == "bat_fuel_list" then
+        if fuelSelector.selected_index >= 4 then
+            fuelBuffer.text = "3"
+        else
+            fuelBuffer.text = "50"
+        end
+    end
+
 end)
