@@ -299,7 +299,7 @@ script.on_init(function()
         if freeplay["set_skip_intro"] then remote.call("freeplay", "set_skip_intro", true) end
         if freeplay["set_disable_crashsite"] then remote.call("freeplay", "set_disable_crashsite", true) end
     end
-    global.batTempBPInventory = game.create_inventory(1)
+    global.batTempBPInventory = game.create_inventory(5)
 end)
 
 script.on_event(defines.events.on_player_created, function(event)
@@ -350,6 +350,7 @@ script.on_event(defines.events.on_gui_click, function(event)
         end
 
     elseif event.element.name == "bat_go" then
+        global.batTempBPInventory = game.create_inventory(5)
         local player = game.get_player(event.player_index)
         local screen_element = player.gui.screen
         local itemsSortedByStackSize = {}
@@ -383,13 +384,17 @@ script.on_event(defines.events.on_gui_click, function(event)
             local fuelType = fuelPrototypeNames[fuelSelector.selected_index]
             local fuelCount = tonumber(fuelBuffer.text)
 
-            local stack = global.batTempBPInventory[1]
-            stack.set_stack("blueprint")
+            local pickupBP = global.batTempBPInventory[1]
+            pickupBP.set_stack("blueprint")
 
-            stack.set_blueprint_entities(generateBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount))
+            pickupBP.set_blueprint_entities(generateBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount))
 
+            local BPBook = global.batTempBPInventory[3]
+            BPBook.set_stack("blueprint-book")
+            local inventory = BPBook.get_inventory(defines.inventory.item_main)
+            inventory.insert(pickupBP)
 
-            player.cursor_stack.set_stack(stack)
+            player.cursor_stack.set_stack(BPBook)
             
             if screen_element.bat_sub_frame ~= nil then
                 screen_element.bat_sub_frame.destroy()
@@ -398,7 +403,7 @@ script.on_event(defines.events.on_gui_click, function(event)
         else
             player.print("Cursor must be empty before creating a new blueprint")
         end
-        
+        global.batTempBPInventory.destroy()
     end
 end)
 
