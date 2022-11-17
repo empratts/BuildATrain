@@ -164,7 +164,15 @@ function getCursorBPItemCount(player)
         end
 
         if player.cursor_stack.valid_for_read then
-            local bpTiles = player.cursor_stack.get_blueprint_tiles()
+            local bpTiles = {}
+            if player.cursor_stack.is_blueprint_book then
+                --local index = player.cursor_stack.active_index
+                --local inventory = player.cursor_stack.get_inventory(defines.inventory.item_main)
+                bpTiles = player.cursor_stack.get_inventory(defines.inventory.item_main)[player.cursor_stack.active_index].get_blueprint_tiles()
+                player.print("Blueprint books currently only use the inventory of the currently active print. In the future an option will be added to use the entire book.")
+            else
+                bpTiles = player.cursor_stack.get_blueprint_tiles()
+            end
             if bpTiles ~= nil then
                 for _, bpItem in pairs(bpTiles) do
                     name = bpItem.name
@@ -179,7 +187,7 @@ function getCursorBPItemCount(player)
                 end
             end
         else
-            player.print("Blueprints from the library will not properly import tiles. To have tiles (including landfill) counted correctly, please copy the blueprint to the player inventory")
+            player.print("Blueprints from the library and have limited functionality. For full functionality, please use a plain blueprint from the player inventory.")
         end
     end
     return bpItems, itemCount
@@ -375,6 +383,7 @@ script.on_event(defines.events.on_gui_click, function(event)
         bpItems, bpItemCount = getCursorBPItemCount(player)
         
         if bpItemCount > 0 then
+            player.clear_cursor()
             generateSubScreenFromBPItems(player, bpItems)
         else
             player.print("Item is not a Bluerprint, or Blueprint is empty.")
