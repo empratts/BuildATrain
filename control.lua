@@ -4,6 +4,7 @@ fuelTypes = {"Wood", "Coal", "Solid fuel", "Rocket fuel", "Nuclear fuel"}
 fuelPrototypeNames = {"wood", "coal", "solid-fuel", "rocket-fuel", "nuclear-fuel"}
 fuelSelector = {} --holds the drop-down for the fuel type selector
 fuelBuffer = {} --holds the text field for the fuel quantity buffer
+sourceBPName = ""
 
 function dump(o)
     if type(o) == 'table' then
@@ -21,7 +22,6 @@ function dump(o)
         end
     end
  end
-
 
 function getRemainingCapacity(car)
     local capacity = 40
@@ -117,11 +117,7 @@ function getCursorBPItemCount(player)
     if player.is_cursor_blueprint() then
         local bpEntities = player.get_blueprint_entities()
 
-        --player.print(dump(bpEntities))
-        --player.print(serpent.block(bpEntities))
-        --game.write_file("bat_log.log", serpent.block(bpEntities))
-        --table.save(bpEntities, "bat_log.log")
-        game.write_file("bat_log.log", dump(bpEntities).."\n")
+        --game.write_file("bat_log.log", dump(bpEntities).."\n")
         
         local name = ""
         local count = 0
@@ -166,12 +162,12 @@ function getCursorBPItemCount(player)
         if player.cursor_stack.valid_for_read then
             local bpTiles = {}
             if player.cursor_stack.is_blueprint_book then
-                --local index = player.cursor_stack.active_index
-                --local inventory = player.cursor_stack.get_inventory(defines.inventory.item_main)
                 bpTiles = player.cursor_stack.get_inventory(defines.inventory.item_main)[player.cursor_stack.active_index].get_blueprint_tiles()
+                sourceBPName = player.cursor_stack.get_inventory(defines.inventory.item_main)[player.cursor_stack.active_index].label
                 player.print("Blueprint books currently only use the inventory of the currently active print. In the future an option will be added to use the entire book.")
             else
                 bpTiles = player.cursor_stack.get_blueprint_tiles()
+                sourceBPName = player.cursor_stack.label
             end
             if bpTiles ~= nil then
                 for _, bpItem in pairs(bpTiles) do
@@ -187,16 +183,21 @@ function getCursorBPItemCount(player)
                 end
             end
         else
-            player.print("Blueprints from the library and have limited functionality. For full functionality, please use a plain blueprint from the player inventory.")
+            sourceBPName = ""
+            player.print("Blueprints from the library and have limited functionality. For full functionality, please copy the blueprint to the player inventory.")
         end
+    end
+    if sourceBPName == "" then
+        player.print("Recommend using a BP from the player inventory with a name for best results.")
+        sourceBPName = tostring(math.random(10000))
     end
     return bpItems, itemCount
 end
 
 function generateTrainSchedule()
     local schedule = {
-        [1] = {["station"]="BAT_MassBuild_Loading",["wait_conditions"]={[1]={["compare_type"]="or",["type"]="inactivity",["ticks"]=300,},},},
-        [2] = {["station"]="BAT_MassBuild_Dropoff",["wait_conditions"]={[1]={["compare_type"]="or",["type"]="empty",}}},
+        [1] = {["station"]="BAT_"..sourceBPName.."_Loading",["wait_conditions"]={[1]={["compare_type"]="or",["type"]="inactivity",["ticks"]=300,},},},
+        [2] = {["station"]="BAT_"..sourceBPName.."_Dropoff",["wait_conditions"]={[1]={["compare_type"]="or",["type"]="empty",}}},
     }
 
     if itemTotals ~= nil then
@@ -214,7 +215,7 @@ function generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, 
     local blueprint = {
         [1]={["entity_number"]=1,["name"]="locomotive",["position"]={["x"]=6,["y"]=1,},["orientation"]=0.75,["schedule"]=generateTrainSchedule(),},
         [2]={["entity_number"]=2,["name"]="logistic-chest-requester",["position"]={["x"]=8.5,["y"]=-1.5,},["request_filters"]={{["index"]=1,["name"]=fuelType,["count"]=fuelCount},},},
-        [3]={["entity_number"]=3,["name"]="train-stop",["position"]={["x"]=3,["y"]=-1,},["direction"]=6,["control_behavior"]={["send_to_train"]="false",["read_from_train"]="true",["read_stopped_train"]="true",["train_stopped_signal"]={["type"]="virtual",["name"]="signal-T",},}, ["connections"]={["1"]={["red"]={[1]={["entity_id"]=14,},},["green"]={[1]={["entity_id"]=4,["circuit_id"]=1,},},},}, ["station"]="BAT_MassBuild_Loading",["manual_trains_limit"]=1,},
+        [3]={["entity_number"]=3,["name"]="train-stop",["position"]={["x"]=3,["y"]=-1,},["direction"]=6,["control_behavior"]={["send_to_train"]="false",["read_from_train"]="true",["read_stopped_train"]="true",["train_stopped_signal"]={["type"]="virtual",["name"]="signal-T",},}, ["connections"]={["1"]={["red"]={[1]={["entity_id"]=14,},},["green"]={[1]={["entity_id"]=4,["circuit_id"]=1,},},},}, ["station"]="BAT_"..sourceBPName.."_Loading",["manual_trains_limit"]=1,},
         [4]={["entity_number"]=4,["name"]="decider-combinator",["position"]={["x"]=5,["y"]=-0.5,},["direction"]=2,["control_behavior"]={["decider_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-T",},["constant"]=0,["comparator"]="≠",["output_signal"]={["type"]="virtual",["name"]="signal-T",},["copy_count_from_input"]="true",},},["connections"]={["1"]={["green"]={[1]={["entity_id"]=3,},},},["2"]={["green"]={[1]={["entity_id"]=5,["circuit_id"]=1,},},},},},
         [5]={["entity_number"]=5,["name"]="decider-combinator",["position"]={["x"]=7,["y"]=-0.5,},["direction"]=2,["control_behavior"]={["decider_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-T",},["constant"]=0,["comparator"]="≠",["output_signal"]={["type"]="virtual",["name"]="signal-T",},["copy_count_from_input"]="true",},},["connections"]={["1"]={["green"]={[1]={["entity_id"]=4,["circuit_id"]=2,},},},["2"]={["green"]={[1]={["entity_id"]=14,},},},},},
         [6]={["entity_number"]=6,["name"]="rail-signal",["position"]={["x"]=1.5,["y"]=-0.5,},["direction"]=2,},
@@ -269,7 +270,7 @@ end
 
 function generateDropoffBP(carCount, itemRequests)
     local blueprint = {
-        [1]={["entity_number"]=1,["name"]="train-stop",["position"]={["x"]=3,["y"]=-1,},["direction"]=6, ["station"]="BAT_MassBuild_Dropoff",["manual_trains_limit"]=1,},
+        [1]={["entity_number"]=1,["name"]="train-stop",["position"]={["x"]=3,["y"]=-1,},["direction"]=6, ["station"]="BAT_"..sourceBPName.."_Dropoff",["manual_trains_limit"]=1,},
         [2]={["entity_number"]=2,["name"]="rail-signal",["position"]={["x"]=1.5,["y"]=-0.5,},["direction"]=2,},
         [3]={["entity_number"]=3,["name"]="straight-rail",["position"]={["x"]=1,["y"]=1,},["direction"]=2,},
         [4]={["entity_number"]=4,["name"]="straight-rail",["position"]={["x"]=3,["y"]=1,},["direction"]=2,},
@@ -370,7 +371,6 @@ script.on_init(function()
         if freeplay["set_skip_intro"] then remote.call("freeplay", "set_skip_intro", true) end
         if freeplay["set_disable_crashsite"] then remote.call("freeplay", "set_disable_crashsite", true) end
     end
-    global.batTempBPInventory = game.create_inventory(5)
 end)
 
 script.on_event(defines.events.on_player_created, function(event)
@@ -442,14 +442,11 @@ script.on_event(defines.events.on_gui_click, function(event)
                         end
                     end
                 end
-                --player.print(dump(itemsSortedByStackSize))
-                --player.print("For ".. totalStackSize .. " stacks, ".. tostring(math.ceil(totalStackSize /40)).." minimum train cars are needed")
             end
 
             local cars = splitItemsIntoCars(itemsSortedByStackSize)
             local carCount = #cars
-            --player.print(dump(cars).." with a total of "..carCount.." cars")
-
+            
             local itemRequests = getRequestFiltersFromCars(cars)
             local combinatorSettings = getCombinatorSettingsFromCars(cars)
 
@@ -466,12 +463,14 @@ script.on_event(defines.events.on_gui_click, function(event)
             pickupBP.set_stack("blueprint")
 
             pickupBP.set_blueprint_entities(generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount))
+            pickupBP.label = "BAT "..sourceBPName.." Pickup"
             inventory.insert(pickupBP)
 
             local dropoffBP = global.batTempBPInventory[3]
             dropoffBP.set_stack("blueprint")
 
             dropoffBP.set_blueprint_entities(generateDropoffBP(carCount, itemRequests))
+            dropoffBP.label = "BAT "..sourceBPName.." Dropoff"
             inventory.insert(dropoffBP)
 
             player.cursor_stack.set_stack(BPBook)
