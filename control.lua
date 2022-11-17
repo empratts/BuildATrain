@@ -257,6 +257,10 @@ function generateSubScreenFromBPItems(player, bpItems)
 
         itemTotals = {}
         itemBuffers = {}
+
+        bpItems["construction-robot"] = 50
+        bpItems["logistic-robot"] = 100
+        bpItems["cliff-explosives"] = 60
         
         for k, v in pairs(bpItems) do
             local sub_content_flow = sub_scroll_pane.add{type="flow", name="bat_controls_flow_"..k, direction="horizontal", style="bat_content_flow"}
