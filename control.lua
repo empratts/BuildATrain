@@ -185,7 +185,7 @@ function getCursorBPItemCount(player)
     return bpItems, itemCount
 end
 
-function generateBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount)
+function generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount)
     local blueprint = {
         [1]={["entity_number"]=1,["name"]="locomotive",["position"]={["x"]=6,["y"]=1,},["orientation"]=0.75,["schedule"]={[1]={["station"]="BAT_MassBuild_Loading",["wait_conditions"]={[1]={["compare_type"]="or",["type"]="item_count",["condition"]={["first_signal"]={["type"]="item",["name"]="fast-inserter",},["constant"]=25,["comparator"]="≥",},},[2]={["compare_type"]="and",["type"]="item_count",["condition"]={["first_signal"]={["type"]="item",["name"]="big-electric-pole",},["constant"]=19,["comparator"]="≥",},},[3]={["compare_type"]="and",["type"]="inactivity",["ticks"]=300,},},},},},
         [2]={["entity_number"]=2,["name"]="logistic-chest-requester",["position"]={["x"]=8.5,["y"]=-1.5,},["request_filters"]={{["index"]=1,["name"]=fuelType,["count"]=fuelCount},},},
@@ -239,6 +239,52 @@ function generateBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCo
 
     blueprint[2+13*(carCount+1)]={["entity_number"]=2+13*(carCount+1),["name"]="rail-signal",["position"]={["x"]=9.5+7*carCount,["y"]=-0.5,},["direction"]=2,}
     
+    return blueprint
+end
+
+function generateDropoffBP(carCount, itemRequests)
+    local blueprint = {
+        [1]={["entity_number"]=1,["name"]="train-stop",["position"]={["x"]=3,["y"]=-1,},["direction"]=6, ["station"]="BAT_MassBuild_Dropoff",["manual_trains_limit"]=1,},
+        [2]={["entity_number"]=2,["name"]="rail-signal",["position"]={["x"]=1.5,["y"]=-0.5,},["direction"]=2,},
+        [3]={["entity_number"]=3,["name"]="straight-rail",["position"]={["x"]=1,["y"]=1,},["direction"]=2,},
+        [4]={["entity_number"]=4,["name"]="straight-rail",["position"]={["x"]=3,["y"]=1,},["direction"]=2,},
+        [5]={["entity_number"]=5,["name"]="straight-rail",["position"]={["x"]=5,["y"]=1,},["direction"]=2,},
+        [6]={["entity_number"]=6,["name"]="straight-rail",["position"]={["x"]=6,["y"]=1,},["direction"]=2,},
+        [7]={["entity_number"]=7,["name"]="straight-rail",["position"]={["x"]=9,["y"]=1,},["direction"]=2,},
+        [8]={["entity_number"]=8,["name"]="medium-electric-pole",["position"]={["x"]=4.5,["y"]=-1.5,},["neighbours"]={[1]=9,},},
+        [9]={["entity_number"]=9,["name"]="medium-electric-pole",["position"]={["x"]=9.5,["y"]=-1.5,},["neighbours"]={[1]=8,},},
+    }
+
+    local xOffset = 0
+    local entityOffset = 0
+
+    for i = 1, carCount do
+        xOffset = 3 + 7 * i
+        entityOffset = 2 + 7 * i
+        
+        blueprint[entityOffset+1]={["entity_number"]=entityOffset+1,["name"]="logistic-chest-passive-provider",["position"]={["x"]=xOffset+5.5,["y"]=-1.5,},}
+        
+        if i % 2 == 1 then
+            --odd cars get 4 peices of rail
+            blueprint[entityOffset+2]={["entity_number"]=entityOffset+2,["name"]="straight-rail",["position"]={["x"]=xOffset+1,["y"]=1,},["direction"]=2,}
+            blueprint[entityOffset+3]={["entity_number"]=entityOffset+3,["name"]="straight-rail",["position"]={["x"]=xOffset+3,["y"]=1,},["direction"]=2,}
+            blueprint[entityOffset+4]={["entity_number"]=entityOffset+4,["name"]="straight-rail",["position"]={["x"]=xOffset+5,["y"]=1,},["direction"]=2,}
+            blueprint[entityOffset+5]={["entity_number"]=entityOffset+5,["name"]="straight-rail",["position"]={["x"]=xOffset+7,["y"]=1,},["direction"]=2,}
+            
+        else
+            --even cars get 3 peices of rail
+            blueprint[entityOffset+2]={["entity_number"]=entityOffset+2,["name"]="straight-rail",["position"]={["x"]=xOffset+2,["y"]=1,},["direction"]=2,}
+            blueprint[entityOffset+3]={["entity_number"]=entityOffset+3,["name"]="straight-rail",["position"]={["x"]=xOffset+4,["y"]=1,},["direction"]=2,}
+            blueprint[entityOffset+4]={["entity_number"]=entityOffset+4,["name"]="straight-rail",["position"]={["x"]=xOffset+6,["y"]=1,},["direction"]=2,}
+        end
+
+        blueprint[entityOffset+6]={["entity_number"]=entityOffset+6,["name"]="stack-inserter",["position"]={["x"]=xOffset+5.5,["y"]=-0.5,},["direction"]=4,}
+        blueprint[entityOffset+7]={["entity_number"]=entityOffset+7,["name"]="medium-electric-pole",["position"]={["x"]=xOffset+6.5,["y"]=-1.5,},["neighbours"]={[1]=entityOffset,},}
+
+    end
+
+    blueprint[3+7*(carCount+1)]={["entity_number"]=3+7*(carCount+1),["name"]="rail-signal",["position"]={["x"]=9.5+7*carCount,["y"]=-0.5,},["direction"]=2,}
+
     return blueprint
 end
 
@@ -299,7 +345,7 @@ script.on_init(function()
         if freeplay["set_skip_intro"] then remote.call("freeplay", "set_skip_intro", true) end
         if freeplay["set_disable_crashsite"] then remote.call("freeplay", "set_disable_crashsite", true) end
     end
-    global.batTempBPInventory = game.create_inventory(1)
+    global.batTempBPInventory = game.create_inventory(5)
 end)
 
 script.on_event(defines.events.on_player_created, function(event)
@@ -350,6 +396,7 @@ script.on_event(defines.events.on_gui_click, function(event)
         end
 
     elseif event.element.name == "bat_go" then
+        global.batTempBPInventory = game.create_inventory(3)
         local player = game.get_player(event.player_index)
         local screen_element = player.gui.screen
         local itemsSortedByStackSize = {}
@@ -383,13 +430,25 @@ script.on_event(defines.events.on_gui_click, function(event)
             local fuelType = fuelPrototypeNames[fuelSelector.selected_index]
             local fuelCount = tonumber(fuelBuffer.text)
 
-            local stack = global.batTempBPInventory[1]
-            stack.set_stack("blueprint")
+            
+            local BPBook = global.batTempBPInventory[1]
+            BPBook.set_stack("blueprint-book")
+            local inventory = BPBook.get_inventory(defines.inventory.item_main)
+            
 
-            stack.set_blueprint_entities(generateBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount))
+            local pickupBP = global.batTempBPInventory[2]
+            pickupBP.set_stack("blueprint")
 
+            pickupBP.set_blueprint_entities(generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount))
+            inventory.insert(pickupBP)
 
-            player.cursor_stack.set_stack(stack)
+            local dropoffBP = global.batTempBPInventory[3]
+            dropoffBP.set_stack("blueprint")
+
+            dropoffBP.set_blueprint_entities(generateDropoffBP(carCount, itemRequests))
+            inventory.insert(dropoffBP)
+
+            player.cursor_stack.set_stack(BPBook)
             
             if screen_element.bat_sub_frame ~= nil then
                 screen_element.bat_sub_frame.destroy()
@@ -398,7 +457,7 @@ script.on_event(defines.events.on_gui_click, function(event)
         else
             player.print("Cursor must be empty before creating a new blueprint")
         end
-        
+        global.batTempBPInventory.destroy()
     end
 end)
 
