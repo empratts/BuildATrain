@@ -193,9 +193,26 @@ function getCursorBPItemCount(player)
     return bpItems, itemCount
 end
 
+function generateTrainSchedule()
+    local schedule = {
+        [1] = {["station"]="BAT_MassBuild_Loading",["wait_conditions"]={[1]={["compare_type"]="or",["type"]="inactivity",["ticks"]=300,},},},
+        [2] = {["station"]="BAT_MassBuild_Dropoff",["wait_conditions"]={[1]={["compare_type"]="or",["type"]="empty",}}},
+    }
+
+    if itemTotals ~= nil then
+        local i = 2
+        for k, v in pairs(itemTotals) do
+            schedule[1]["wait_conditions"][i] = {["compare_type"]="and",["type"]="item_count",["condition"]={["first_signal"]={["type"]="item",["name"]=k,},["constant"]=tonumber(v.text),["comparator"]="≥",},}
+            i = i + 1
+        end
+    end
+    
+    return schedule
+end
+
 function generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount)
     local blueprint = {
-        [1]={["entity_number"]=1,["name"]="locomotive",["position"]={["x"]=6,["y"]=1,},["orientation"]=0.75,["schedule"]={[1]={["station"]="BAT_MassBuild_Loading",["wait_conditions"]={[1]={["compare_type"]="or",["type"]="item_count",["condition"]={["first_signal"]={["type"]="item",["name"]="fast-inserter",},["constant"]=25,["comparator"]="≥",},},[2]={["compare_type"]="and",["type"]="item_count",["condition"]={["first_signal"]={["type"]="item",["name"]="big-electric-pole",},["constant"]=19,["comparator"]="≥",},},[3]={["compare_type"]="and",["type"]="inactivity",["ticks"]=300,},},},},},
+        [1]={["entity_number"]=1,["name"]="locomotive",["position"]={["x"]=6,["y"]=1,},["orientation"]=0.75,["schedule"]=generateTrainSchedule(),},
         [2]={["entity_number"]=2,["name"]="logistic-chest-requester",["position"]={["x"]=8.5,["y"]=-1.5,},["request_filters"]={{["index"]=1,["name"]=fuelType,["count"]=fuelCount},},},
         [3]={["entity_number"]=3,["name"]="train-stop",["position"]={["x"]=3,["y"]=-1,},["direction"]=6,["control_behavior"]={["send_to_train"]="false",["read_from_train"]="true",["read_stopped_train"]="true",["train_stopped_signal"]={["type"]="virtual",["name"]="signal-T",},}, ["connections"]={["1"]={["red"]={[1]={["entity_id"]=14,},},["green"]={[1]={["entity_id"]=4,["circuit_id"]=1,},},},}, ["station"]="BAT_MassBuild_Loading",["manual_trains_limit"]=1,},
         [4]={["entity_number"]=4,["name"]="decider-combinator",["position"]={["x"]=5,["y"]=-0.5,},["direction"]=2,["control_behavior"]={["decider_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-T",},["constant"]=0,["comparator"]="≠",["output_signal"]={["type"]="virtual",["name"]="signal-T",},["copy_count_from_input"]="true",},},["connections"]={["1"]={["green"]={[1]={["entity_id"]=3,},},},["2"]={["green"]={[1]={["entity_id"]=5,["circuit_id"]=1,},},},},},
