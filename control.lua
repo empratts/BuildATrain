@@ -198,7 +198,7 @@ function getCursorBPItemCount(player)
             player.print("Blueprints from the library and have limited functionality. For full functionality, please copy the blueprint to the player inventory.")
         end
     end
-    if sourceBPName == "" then
+    if sourceBPName == "" or sourceBPName == nil then
         player.print("Recommend using a BP from the player inventory with a name for best results.")
         sourceBPName = tostring(math.random(10000))
     end
@@ -299,7 +299,7 @@ function generateDropoffBP(carCount, itemRequests)
         xOffset = 3 + 7 * i
         entityOffset = 2 + 7 * i
         
-        blueprint[entityOffset+1]={["entity_number"]=entityOffset+1,["name"]="logistic-chest-passive-provider",["position"]={["x"]=xOffset+5.5,["y"]=-1.5,},}
+        blueprint[entityOffset+1]={["entity_number"]=entityOffset+1,["name"]="logistic-chest-buffer",["position"]={["x"]=xOffset+5.5,["y"]=-1.5,},}
         
         if i % 2 == 1 then
             --odd cars get 4 peices of rail
