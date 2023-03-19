@@ -6,7 +6,7 @@ fuelSelector = {} --holds the drop-down for the fuel type selector
 fuelBuffer = {} --holds the text field for the fuel quantity buffer
 sourceBPName = ""
 logiBotCount = 0
-logiBotCar = 0
+botCars = {}
 conBotCount = 0
 
 function dump(o)
@@ -52,7 +52,7 @@ end
 
 function splitItemsIntoCars(items)
     logiBotCount = tonumber(itemTotals["logistic-robot"].text)
-    logiBotCar = 0
+    botCars = {}
     conBotCount = tonumber(itemTotals["construction-robot"].text)
     
     local cars = {}
@@ -66,6 +66,10 @@ function splitItemsIntoCars(items)
                     cars[car] = {}
                 end
                 table.insert(cars[car], 1, {v[1], math.min(40, stacksRemaining), v[3], v[4]})
+                
+                if (v[1] == "logistic-robot" or v[1] == "construction-robot") and not botCars[car] then
+                    botCars[car] = true
+                end
 
                 if stacksRemaining < 40 then
                     table.insert(cars[car], 1, {"FILLER", 40 - stacksRemaining, 0, 0})
@@ -78,8 +82,8 @@ function splitItemsIntoCars(items)
                 cars[car] = {}
             end
 
-            if v[1] == "logistic-robot" and logiBotCar == 0 then
-                logiBotCar = car
+            if (v[1] == "logistic-robot" or v[1] == "construction-robot") and not botCars[car] then
+                botCars[car] = true
             end
 
             table.insert(cars[car], 1, v)
@@ -271,7 +275,6 @@ function generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, 
 
         blueprint[entityOffset+12]={["entity_number"]=entityOffset+12,["name"]="stack-filter-inserter",["position"]={["x"]=xOffset+5.5,["y"]=-0.5,},["control_behavior"]={["circuit_mode_of_operation"]=1,["circuit_set_stack_size"]="true",["stack_control_input_signal"]={["type"]="virtual",["name"]="signal-I",},},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+5,["circuit_id"]=2,},[2]={["entity_id"]=entityOffset+6,["circuit_id"]=2,},},},},}
         blueprint[entityOffset+13]={["entity_number"]=entityOffset+13,["name"]="medium-electric-pole",["position"]={["x"]=xOffset+6.5,["y"]=-1.5,},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset,},},["green"]={[1]={["entity_id"]=entityOffset,},},},},["neighbours"]={[1]=entityOffset,},}
-
     end
 
     blueprint[2+13*(carCount+1)]={["entity_number"]=2+13*(carCount+1),["name"]="rail-signal",["position"]={["x"]=9.5+7*carCount,["y"]=-0.5,},["direction"]=2,}
@@ -297,7 +300,7 @@ function generateDropoffBP(carCount, itemRequests)
 
     for i = 1, carCount do
         xOffset = 3 + 7 * i
-        entityOffset = 2 + 7 * i
+        entityOffset = -2 + 11 * i
         
         blueprint[entityOffset+1]={["entity_number"]=entityOffset+1,["name"]="logistic-chest-buffer",["position"]={["x"]=xOffset+5.5,["y"]=-1.5,},}
         
@@ -315,28 +318,25 @@ function generateDropoffBP(carCount, itemRequests)
             blueprint[entityOffset+4]={["entity_number"]=entityOffset+4,["name"]="straight-rail",["position"]={["x"]=xOffset+6,["y"]=1,},["direction"]=2,}
         end
 
-        if logiBotCar == i then
-            blueprint[entityOffset+6]={["entity_number"]=entityOffset+6,["name"]="stack-filter-inserter",["filter_mode"]="blacklist",["filters"]={{["index"]=1,["name"]="logistic-robot",},},["position"]={["x"]=xOffset+5.5,["y"]=-0.5,},["direction"]=4,}
+        if botCars[i] then
+            blueprint[entityOffset+6]={["entity_number"]=entityOffset+6,["name"]="stack-filter-inserter",["filter_mode"]="blacklist",["filters"]={{["index"]=1,["name"]="construction-robot",},},["position"]={["x"]=xOffset+5.5,["y"]=-0.5,},["direction"]=4, ["control_behavior"]={["circuit_condition"]={["first_signal"]={["type"]="virtual",["name"]="signal-T",} ,["constant"]=25,["comparator"]=">",} ,} ,["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+7,} ,} ,} ,} ,}
+            
+            --add roboport
+            xOffset = 3 + 7 * i
+            blueprint[entityOffset+7]={["entity_number"]=entityOffset+7,["name"]="roboport",["position"]={["x"]=xOffset+2,["y"]=-3,} ,["control_behavior"]={["read_logistics"]="false",["read_robot_stats"]="true",} ,["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+8,} , [2]={["entity_id"]=entityOffset+6,} ,} ,} ,} ,} 
+            blueprint[entityOffset+8]={["entity_number"]=entityOffset+8,["name"]="fast-inserter",["position"]={["x"]=xOffset+4.5,["y"]=-1.5,} ,["direction"]=2,["control_behavior"]={["circuit_condition"]={["first_signal"]={["type"]="virtual",["name"]="signal-Z",} ,["second_signal"]={["type"]="virtual",["name"]="signal-T",},["comparator"]="=",} ,} ,["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+7,} ,} ,} ,} ,} 
+            blueprint[entityOffset+9]={["entity_number"]=entityOffset+9,["name"]="stack-filter-inserter",["filter_mode"]="blacklist",["filters"]={{["index"]=1,["name"]="logistic-robot",},},["position"]={["x"]=xOffset+1.5,["y"]=-0.5,},["direction"]=4,}
+            blueprint[entityOffset+10]={["entity_number"]=entityOffset+10,["name"]="logistic-chest-storage",["position"]={["x"]=xOffset+2.5,["y"]=-0.5,},}
         else
             blueprint[entityOffset+6]={["entity_number"]=entityOffset+6,["name"]="stack-inserter",["position"]={["x"]=xOffset+5.5,["y"]=-0.5,},["direction"]=4,}
         end
 
-        blueprint[entityOffset+7]={["entity_number"]=entityOffset+7,["name"]="medium-electric-pole",["position"]={["x"]=xOffset+6.5,["y"]=-1.5,},["neighbours"]={[1]=entityOffset,},}
+        blueprint[entityOffset+11]={["entity_number"]=entityOffset+11,["name"]="medium-electric-pole",["position"]={["x"]=xOffset+6.5,["y"]=-1.5,},["neighbours"]={[1]=entityOffset,},}
 
     end
 
-    blueprint[3+7*(carCount+1)]={["entity_number"]=3+7*(carCount+1),["name"]="rail-signal",["position"]={["x"]=9.5+7*carCount,["y"]=-0.5,},["direction"]=2,}
-    --add roboport
-    if logiBotCar > 0 then
-        xOffset = 3 + 7 * logiBotCar
-        blueprint[4+7*(carCount+1)]={["entity_number"]=4+7*(carCount+1),["name"]="roboport",["position"]={["x"]=xOffset+3,["y"]=-3,} ,["control_behavior"]={["read_logistics"]="false",["read_robot_stats"]="true",} ,["connections"]={["1"]={["red"]={[1]={["entity_id"]=8+7*(carCount+1),} ,} ,} ,} ,} 
-        blueprint[5+7*(carCount+1)]={["entity_number"]=5+7*(carCount+1),["name"]="logistic-chest-requester",["position"]={["x"]=xOffset-0.5,["y"]=-2.5,} ,["request_filters"]={[1]={["index"]=1,["name"]="logistic-robot",["count"]=50,} ,} ,} 
-        blueprint[6+7*(carCount+1)]={["entity_number"]=6+7*(carCount+1),["name"]="logistic-chest-requester",["position"]={["x"]=xOffset-0.5,["y"]=-3.5,} ,["request_filters"]={[1]={["index"]=1,["name"]="construction-robot",["count"]=50,} ,} ,} 
-        blueprint[7+7*(carCount+1)]={["entity_number"]=7+7*(carCount+1),["name"]="fast-inserter",["position"]={["x"]=xOffset+0.5,["y"]=-2.5,} ,["direction"]=6,["control_behavior"]={["circuit_condition"]={["first_signal"]={["type"]="virtual",["name"]="signal-X",} ,["constant"]=100,["comparator"]="<",} ,} ,["connections"]={["1"]={["red"]={[1]={["entity_id"]=8+7*(carCount+1),} ,} ,} ,} ,} 
-        blueprint[8+7*(carCount+1)]={["entity_number"]=8+7*(carCount+1),["name"]="fast-inserter",["position"]={["x"]=xOffset+0.5,["y"]=-3.5,} ,["direction"]=6,["control_behavior"]={["circuit_condition"]={["first_signal"]={["type"]="virtual",["name"]="signal-Z",} ,["constant"]=100,["comparator"]="<",} ,} ,["connections"]={["1"]={["red"]={[1]={["entity_id"]=4+7*(carCount+1),} ,[2]={["entity_id"]=7+7*(carCount+1),} ,} ,} ,} ,}
-        blueprint[9+7*(carCount+1)]={["entity_number"]=9+7*(carCount+1),["name"]="stack-inserter",["position"]={["x"]=xOffset+1.5,["y"]=-0.5,},["direction"]=4,["control_behavior"]={["circuit_condition"]={["first_signal"]={["type"]="virtual",["name"]="signal-X",} ,["constant"]=100,["comparator"]="<",} ,} ,["connections"]={["1"]={["red"]={[1]={["entity_id"]=4+7*(carCount+1),} ,[2]={["entity_id"]=7+7*(carCount+1),} ,} ,} ,} ,}
-        blueprint[10+7*(carCount+1)]={["entity_number"]=10+7*(carCount+1),["name"]="logistic-chest-storage",["position"]={["x"]=xOffset+2.5,["y"]=-0.5,},}
-    end
+    blueprint[3+11*(carCount+1)]={["entity_number"]=3+11*(carCount+1),["name"]="rail-signal",["position"]={["x"]=9.5+7*carCount,["y"]=-0.5,},["direction"]=2,}
+
 
     return blueprint
 end
@@ -489,6 +489,8 @@ script.on_event(defines.events.on_gui_click, function(event)
 
             local pickupBP = global.batTempBPInventory[2]
             pickupBP.set_stack("blueprint")
+
+            local testing = generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount)
 
             pickupBP.set_blueprint_entities(generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount))
             pickupBP.label = "BAT "..sourceBPName.." Pickup"
