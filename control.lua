@@ -113,11 +113,11 @@ function getCombinatorSettingsFromCars(cars)
 
     local combinators = {}
     for i, car in pairs(cars) do
-        local signals = {}
+        local signals = {{}, {}}
         for j, item in pairs(car) do
             if item[1] ~= "FILLER" then
-                local signal = {["signal"]={["type"]="item",["name"]=item[1],},["count"]=item[3],["index"]=j}
-                table.insert(signals,j,signal)
+                local signal = {["signal"]={["type"]="item",["name"]=item[1],},["count"]=item[3],["index"]=j % 20 + 1}
+                table.insert(signals[math.floor(j / 20) + 1],j % 20 + 1,signal)
             end
         end
         table.insert(combinators, i, signals)
@@ -241,7 +241,7 @@ function generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, 
         [11]={["entity_number"]=11,["name"]="straight-rail",["position"]={["x"]=6,["y"]=1,},["direction"]=2,},
         [12]={["entity_number"]=12,["name"]="straight-rail",["position"]={["x"]=9,["y"]=1,},["direction"]=2,},
         [13]={["entity_number"]=13,["name"]="medium-electric-pole",["position"]={["x"]=4.5,["y"]=-1.5,},["neighbours"]={[1]=14,},},
-        [14]={["entity_number"]=14,["name"]="medium-electric-pole",["position"]={["x"]=9.5,["y"]=-1.5,},["connections"]={["1"]={["red"]={[1]={["entity_id"]=18,["circuit_id"]=1,},[2]={["entity_id"]=27,}, [3]={["entity_id"]=3,},},["green"]={[1]={["entity_id"]=5,["circuit_id"]=2,},[2]={["entity_id"]=19,["circuit_id"]=1,},[3]={["entity_id"]=27,},},},},["neighbours"]={[1]=13,[2]=27,},},
+        [14]={["entity_number"]=14,["name"]="medium-electric-pole",["position"]={["x"]=9.5,["y"]=-1.5,},["connections"]={["1"]={["red"]={[1]={["entity_id"]=3,},},["green"]={[1]={["entity_id"]=5,["circuit_id"]=2,},},},},["neighbours"]={[1]=13,},},
     }
     
     local xOffset = 0
@@ -249,13 +249,18 @@ function generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, 
 
     for i = 1, carCount do
         xOffset = 3 + 7 * i
-        entityOffset = 1 + 13 * i
+        entityOffset = 1 + 14 * i
         
-        blueprint[entityOffset+1]={["entity_number"]=entityOffset+1,["name"]="constant-combinator",["position"]={["x"]=xOffset+0.5,["y"]=-1.5,},["control_behavior"]={["filters"]=combinatorSettings[i]}, ["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+3,["circuit_id"]=1,},[2]={["entity_id"]=entityOffset+4,["circuit_id"]=2,},},},},}
+        blueprint[entityOffset+1]={["entity_number"]=entityOffset+1,["name"]="constant-combinator",["position"]={["x"]=xOffset+0.5,["y"]=-1.5,},["control_behavior"]={["filters"]=combinatorSettings[i][1]}, ["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+3,["circuit_id"]=1,},[2]={["entity_id"]=entityOffset+4,["circuit_id"]=2,},},},},}
+
+        if next(combinatorSettings[i][2]) ~= nil then
+            blueprint[entityOffset+14]={["entity_number"]=entityOffset+14,["name"]="constant-combinator",["position"]={["x"]=xOffset+0.5,["y"]=-2.5,},["control_behavior"]={["filters"]=combinatorSettings[i][2]}, ["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+3,["circuit_id"]=1,},[2]={["entity_id"]=entityOffset+4,["circuit_id"]=2,},},},},}
+        end
+
         blueprint[entityOffset+2]={["entity_number"]=entityOffset+2,["name"]="logistic-chest-requester",["position"]={["x"]=xOffset+5.5,["y"]=-1.5,},["request_filters"]=itemRequests[i],}
         blueprint[entityOffset+3]={["entity_number"]=entityOffset+3,["name"]="decider-combinator",["position"]={["x"]=xOffset+1.5,["y"]=-1,},["direction"]=4,["control_behavior"]={["decider_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-anything",},["constant"]=0,["comparator"]=">",["output_signal"]={["type"]="virtual",["name"]="signal-anything",},["copy_count_from_input"]="true",},},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+1,},},},["2"]={["red"]={[1]={["entity_id"]=entityOffset+5,["circuit_id"]=1,},[2]={["entity_id"]=entityOffset+6,["circuit_id"]=1,},},},},}
-        blueprint[entityOffset+4]={["entity_number"]=entityOffset+4,["name"]="arithmetic-combinator",["position"]={["x"]=xOffset+2.5,["y"]=-1,},["control_behavior"]={["arithmetic_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-each",},["second_constant"]=-1,["operation"]="*",["output_signal"]={["type"]="virtual",["name"]="signal-each",},},},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset,},},},["2"]={["red"]={[1]={["entity_id"]=entityOffset+1,},},},},}
-        blueprint[entityOffset+5]={["entity_number"]=entityOffset+5,["name"]="decider-combinator",["position"]={["x"]=xOffset+3.5,["y"]=-1,},["direction"]=4,["control_behavior"]={["decider_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-T",},["constant"]=0,["comparator"]="≠",["output_signal"]={["type"]="virtual",["name"]="signal-everything",},["copy_count_from_input"]="true",},},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+3,["circuit_id"]=2,},},["green"]={[1]={["entity_id"]=entityOffset,},},},["2"]={["red"]={[1]={["entity_id"]=entityOffset+12,},},},},}
+        blueprint[entityOffset+4]={["entity_number"]=entityOffset+4,["name"]="arithmetic-combinator",["position"]={["x"]=xOffset+2.5,["y"]=-1,},["control_behavior"]={["arithmetic_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-each",},["second_constant"]=-1,["operation"]="*",["output_signal"]={["type"]="virtual",["name"]="signal-each",},},},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset-1,},},},["2"]={["red"]={[1]={["entity_id"]=entityOffset+1,},},},},}
+        blueprint[entityOffset+5]={["entity_number"]=entityOffset+5,["name"]="decider-combinator",["position"]={["x"]=xOffset+3.5,["y"]=-1,},["direction"]=4,["control_behavior"]={["decider_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-T",},["constant"]=0,["comparator"]="≠",["output_signal"]={["type"]="virtual",["name"]="signal-everything",},["copy_count_from_input"]="true",},},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+3,["circuit_id"]=2,},},["green"]={[1]={["entity_id"]=entityOffset-1,},},},["2"]={["red"]={[1]={["entity_id"]=entityOffset+12,},},},},}
         blueprint[entityOffset+6]={["entity_number"]=entityOffset+6,["name"]="arithmetic-combinator",["position"]={["x"]=xOffset+4.5,["y"]=-1,},["direction"]=4,["control_behavior"]={["arithmetic_conditions"]={["first_signal"]={["type"]="virtual",["name"]="signal-each",},["second_constant"]=1,["operation"]="*",["output_signal"]={["type"]="virtual",["name"]="signal-I",},},},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+3,["circuit_id"]=2,},},},["2"]={["red"]={[1]={["entity_id"]=entityOffset+12,},},},},}
         blueprint[entityOffset+7]={["entity_number"]=entityOffset+7,["name"]="cargo-wagon",["position"]={["x"]=xOffset+3,["y"]=1,},["orientation"]=0.25,}
         
@@ -274,10 +279,10 @@ function generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, 
         end
 
         blueprint[entityOffset+12]={["entity_number"]=entityOffset+12,["name"]="stack-filter-inserter",["position"]={["x"]=xOffset+5.5,["y"]=-0.5,},["control_behavior"]={["circuit_mode_of_operation"]=1,["circuit_set_stack_size"]="true",["stack_control_input_signal"]={["type"]="virtual",["name"]="signal-I",},},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset+5,["circuit_id"]=2,},[2]={["entity_id"]=entityOffset+6,["circuit_id"]=2,},},},},}
-        blueprint[entityOffset+13]={["entity_number"]=entityOffset+13,["name"]="medium-electric-pole",["position"]={["x"]=xOffset+6.5,["y"]=-1.5,},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset,},},["green"]={[1]={["entity_id"]=entityOffset,},},},},["neighbours"]={[1]=entityOffset,},}
+        blueprint[entityOffset+13]={["entity_number"]=entityOffset+13,["name"]="medium-electric-pole",["position"]={["x"]=xOffset+6.5,["y"]=-1.5,},["connections"]={["1"]={["red"]={[1]={["entity_id"]=entityOffset-1,},},["green"]={[1]={["entity_id"]=entityOffset-1,},},},},["neighbours"]={[1]=entityOffset-1,},}
     end
 
-    blueprint[2+13*(carCount+1)]={["entity_number"]=2+13*(carCount+1),["name"]="rail-signal",["position"]={["x"]=9.5+7*carCount,["y"]=-0.5,},["direction"]=2,}
+    blueprint[2+14*(carCount+1)]={["entity_number"]=2+14*(carCount+1),["name"]="rail-signal",["position"]={["x"]=9.5+7*carCount,["y"]=-0.5,},["direction"]=2,}
     
     return blueprint
 end
@@ -484,22 +489,25 @@ script.on_event(defines.events.on_gui_click, function(event)
             
             local BPBook = global.batTempBPInventory[1]
             BPBook.set_stack("blueprint-book")
+            BPBook.label = "BAT "..sourceBPName
             local inventory = BPBook.get_inventory(defines.inventory.item_main)
             
 
             local pickupBP = global.batTempBPInventory[2]
             pickupBP.set_stack("blueprint")
 
-            local testing = generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount)
+            local pickupBPItems = generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount)
 
-            pickupBP.set_blueprint_entities(generatePickupBP(carCount, itemRequests, combinatorSettings, fuelType, fuelCount))
+            pickupBP.set_blueprint_entities(pickupBPItems)
             pickupBP.label = "BAT "..sourceBPName.." Pickup"
             inventory.insert(pickupBP)
 
             local dropoffBP = global.batTempBPInventory[3]
             dropoffBP.set_stack("blueprint")
 
-            dropoffBP.set_blueprint_entities(generateDropoffBP(carCount, itemRequests))
+            local dropoffBPItems = generateDropoffBP(carCount, itemRequests)
+
+            dropoffBP.set_blueprint_entities(dropoffBPItems)
             dropoffBP.label = "BAT "..sourceBPName.." Dropoff"
             inventory.insert(dropoffBP)
 
